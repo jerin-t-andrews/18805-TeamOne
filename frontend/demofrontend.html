@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hardware Project Manager</title>
+  <style>
+    :root {
+      --bg: #f3efe7;
+      --card: #e9dfcf;
+      --accent: #5e9bdb;
+      --accent-dark: #3e7fbf;
+      --text: #1a1a1a;
+      --muted: #666;
+      --radius: 14px;
+      --shadow: 0 6px 18px rgba(0,0,0,.08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--text);
+      background: #fff;
+    }
+
+    /* Top bar */
+    .topbar {
+      background: var(--accent);
+      color: #fff;
+      padding: 18px 28px;
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      gap: 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+    .brand {
+      font-size: clamp(22px, 3.5vw, 40px);
+      font-weight: 800;
+      letter-spacing: .4px;
+      text-shadow: 0 1px 0 rgba(0,0,0,.15);
+    }
+    .navlink {
+      font-size: clamp(16px, 2.2vw, 30px);
+      font-weight: 700;
+      opacity: .95;
+    }
+
+    /* Page layout */
+    .page {
+      padding: 28px;
+      background: var(--bg);
+      min-height: calc(100dvh - 78px);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 28px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Card base */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      border: 1px solid rgba(0,0,0,.06);
+    }
+    .card-body { padding: 20px; }
+
+    .section-header {
+      background: var(--accent);
+      color: #fff;
+      font-weight: 800;
+      text-align: center;
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(0,0,0,.06);
+      letter-spacing: .3px;
+    }
+
+    /* Left - capacities */
+    .table-like {
+      background: #f7f2e8;
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(0,0,0,.08);
+    }
+    .table-head, .table-row {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+    .table-head {
+      background: #e7f0fb;
+      border: 1px solid #cfe1f6;
+      color: #0f2b46;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-weight: 800;
+      margin-bottom: 14px;
+    }
+    .table-row {
+      padding: 8px 0;
+    }
+
+    label { font-weight: 700; }
+
+    input[type="text"], input[type="password"], textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #cfc7ba;
+      background: #fff;
+      outline: none;
+      font-size: 14px;
+    }
+    textarea { resize: vertical; min-height: 44px; }
+
+    .btn {
+      display: inline-block;
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--accent-dark);
+      background: var(--accent);
+      color: #fff;
+      font-weight: 800;
+      text-align: center;
+      cursor: pointer;
+      transition: transform .04s ease, filter .15s ease;
+    }
+    .btn:hover { filter: brightness(1.05); }
+    .btn:active { transform: translateY(1px); }
+
+    .stack { display: grid; gap: 12px; }
+
+    /* Right - forms */
+    .form-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 10px 14px; align-items: center; }
+
+    /* Footer note */
+    .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+    /* Responsive */
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Hardware Project Manager</div>
+    <div class="navlink">Login</div>
+    <div class="navlink">Register</div>
+  </header>
+
+  <main class="page">
+    <div class="grid">
+      <!-- Left column: Capacities and actions -->
+      <section class="card">
+        <div class="section-header">Capacities</div>
+        <div class="card-body">
+          <div class="table-like">
+            <div class="table-head">
+              <div>Capacity</div>
+              <div>Available</div>
+              <div>Request</div>
+            </div>
+            <div class="table-row" style="grid-template-columns: 1.1fr 1fr;">
+              <input type="text" placeholder="Item Name" />
+              <input type="text" placeholder="# Available" />
+            </div>
+          </div>
+
+          <div class="stack" style="max-width: 220px; margin: 18px auto 0;">
+            <button class="btn">Add Item</button>
+            <button class="btn">Check-In</button>
+            <button class="btn">Check-Out</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right column: Login and project forms -->
+      <section class="stack">
+        <div class="card">
+          <div class="section-header">Login</div>
+          <div class="card-body">
+            <div class="form-grid">
+              <label for="u">Username:</label>
+              <input id="u" type="text" placeholder="Enter username" />
+
+              <label for="p">Password:</label>
+              <input id="p" type="password" placeholder="Enter password" />
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-header">Create New Project</div>
+          <div class="card-body">
+            <div class="form-grid">
+              <label for="name">Name:</label>
+              <input id="name" type="text" placeholder="Project name" />
+
+              <label for="desc">Description:</label>
+              <textarea id="desc" placeholder="Brief description"></textarea>
+
+              <label for="pid">ProjectID:</label>
+              <input id="pid" type="text" placeholder="e.g., P-00123" />
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-header">Use Existing Project</div>
+          <div class="card-body">
+            <div class="form-grid" style="grid-template-columns: 1fr 3fr;">
+              <label for="existing">Project ID:</label>
+              <input id="existing" type="text" placeholder="Enter an existing Project ID" />
+            </div>
+            <div class="hint">This page is a static mockup to match your screenshot. Wire the buttons to your backend when ready.</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
