@@ -16,28 +16,48 @@ function Navbar() {
         setMessage('');
 
         try {
-            const response = await fetch('http://localhost:5000/login', {
+            const response = await fetch('http://127.0.0.1:5000/login', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    username: username,
-                    password: password
-                })
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: username, password: password}),
             });
 
             const data = await response.json();
             
             if (data.success) {
                 setMessage(data.message);
-                // TODO: Handle successful login (redirect, store token, etc.)
             } else {
                 setMessage(data.message);
             }
         } catch (error) {
             setMessage('Error connecting to server. Make sure the backend is running.');
             console.error('Login error:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleRegister = async () => {
+        if (!username || !password) {
+            setMessage('Please enter both username and password');
+            return;
+        }
+
+        setIsLoading(true);
+        setMessage('');
+
+        try {
+            const response = await fetch('http://127.0.0.1:5000/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password }),
+            });
+
+            const data = await response.json();
+            setMessage(data.message);
+        } catch (error) {
+            console.error('Register error:', error);
+            setMessage('Error connecting to server. Make sure the backend is running.');
         } finally {
             setIsLoading(false);
         }
@@ -64,6 +84,12 @@ function Navbar() {
                     disabled={isLoading}
                 >
                     {isLoading ? 'Logging in...' : 'Login'}
+                </button>
+                <button
+                    onClick={handleRegister}
+                    disabled={isLoading}
+                >
+                    {isLoading ? 'Creating Account...' : 'Create Account'}
                 </button>
                 {message && (
                     <div className="message">
