@@ -6,7 +6,7 @@ import os
 
 load_dotenv()
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='./dist', static_url_path='/')
 CORS(app)
 
 MONGO_URI = os.getenv('MONGO_URI')
@@ -27,6 +27,10 @@ def initialize_hardware_sets():
         )
 
 initialize_hardware_sets()
+
+@app.route('/')
+def index():
+    return app.send_static_file('index.html')
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -261,5 +265,5 @@ def join_project():
     updated = projects_collection.find_one({"project_id": project_id}, {"_id": 0})
     return jsonify({"success": True, "message": f"Joined project {project_id}", "project": updated}), 200
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', debug=False, port=os.environ.get('PORT', 80))
