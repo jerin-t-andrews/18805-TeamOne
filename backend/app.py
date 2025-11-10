@@ -294,9 +294,7 @@ users = None
 hardware_collection = None
 projects_collection = None
 
-@app.before_serving
-def _startup():
-    initialize_hardware_sets()
+
 
 def connect_mongo() -> bool:
     """Establish Mongo connection once, on demand. Returns True if connected."""
@@ -338,10 +336,13 @@ def initialize_hardware_sets():
         )
     app.logger.info("Hardware sets initialized.")
 
-@app.before_first_request
-def _warmup():
-    if connect_mongo():
-        initialize_hardware_sets()
+initialize_hardware_sets()
+connect_mongo()
+
+# @app.before_first_request
+# def _warmup():
+#     if connect_mongo():
+#         initialize_hardware_sets()
 
 # ---------- Static / SPA ----------
 @app.route('/')
