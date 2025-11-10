@@ -336,8 +336,10 @@ def initialize_hardware_sets():
         )
     app.logger.info("Hardware sets initialized.")
 
-connect_mongo()
 initialize_hardware_sets()
+connect_mongo()
+
+
 
 # @app.before_first_request
 # def _warmup():
