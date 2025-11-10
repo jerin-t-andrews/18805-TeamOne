@@ -346,7 +346,7 @@ connect_mongo()
 
 # ---------- Static / SPA ----------
 @app.route('/')
-def index():
+def index(): #Test
     return app.send_static_file('index.html')
 
 @app.route('/<path:path>')
