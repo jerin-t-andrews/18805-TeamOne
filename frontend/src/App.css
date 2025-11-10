@@ -2,7 +2,6 @@
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
-  /* padding-top: 60px; push content below navbar */
   text-align: center;
 }
 
@@ -41,4 +40,63 @@ nav button {
   background-color: #2563eb;
   color: white;
   cursor: pointer;
+}
+
+.content {
+  margin-top: 72px;
+}
+
+.panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  text-align: left;
+}
+
+.panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.project-create, .hardware-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.project-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.hardware-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hardware-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.hardware-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.warning {
+  margin-bottom: 8px;
+  color: #b45309;
 }

@@ -57,8 +57,27 @@ def login():
     
 @app.route('/hardware', methods=['GET'])
 def get_hardware_sets():
-    sets = list(hardware_collection.find({}, {"_id": 0}))
-    return jsonify(sets), 200
+    project_id = request.args.get('project_id')
+    base_sets = list(hardware_collection.find({}, {"_id": 0}))
+
+    if project_id:
+        project = projects_collection.find_one({"project_id": project_id})
+        usage = (project or {}).get('hardware_usage', {}) if project else {}
+        sets = []
+        for s in base_sets:
+            cap = s.get('capacity', 0)
+            used = int(usage.get(s.get('name'), 0))
+            sets.append({
+                'name': s.get('name'),
+                'capacity': cap,
+                'available': max(0, cap - used)
+            })
+        return jsonify(sets), 200
+
+    for s in base_sets:
+        if 'available' not in s:
+            s['available'] = s.get('capacity', 0)
+    return jsonify(base_sets), 200
 
 @app.route('/hardware/checkout', methods=['POST'])
 def checkout_hardware():
@@ -66,33 +85,39 @@ def checkout_hardware():
     name = data.get('name')
     amount = int(data.get('amount', 0))
     project_id = data.get('project_id')
+    username = data.get('username')
 
-    if not name or amount <= 0:
-        return jsonify({"success": False, "message": "Provide name and positive amount"}), 400
+    if not name or amount <= 0 or not project_id or not username:
+        return jsonify({"success": False, "message": "Provide name, positive amount, project_id, and username"}), 400
 
-    updated = hardware_collection.find_one_and_update(
-        {"name": name, "available": {"$gte": amount}},
-        {"$inc": {"available": -amount}},
-        projection={"_id": 0},
-        return_document=True
+    hwset = hardware_collection.find_one({"name": name})
+    if not hwset:
+        return jsonify({"success": False, "message": "Hardware set not found"}), 404
+
+    project = projects_collection.find_one({"project_id": project_id})
+    if not project:
+        return jsonify({"success": False, "message": "Project not found"}), 404
+
+    members = project.get('members') or [project.get('owner') or project.get('username')]
+    if username not in members:
+        return jsonify({"success": False, "message": "User is not a member of this project"}), 403
+
+    cap = int(hwset.get('capacity', 0))
+    current_usage = int((project.get('hardware_usage') or {}).get(name, 0))
+    if current_usage + amount > cap:
+        return jsonify({"success": False, "message": "Not enough hardware available for this project"}), 400
+
+    projects_collection.update_one(
+        {"project_id": project_id},
+        {"$inc": {f"hardware_usage.{name}": amount, f"user_usage.{username}.{name}": amount}}
     )
 
-    if not updated:
-        exists = hardware_collection.find_one({"name": name})
-        if not exists:
-            return jsonify({"success": False, "message": "Hardware set not found"}), 404
-        return jsonify({"success": False, "message": "Not enough hardware available"}), 400
-
-    if project_id:
-        projects_collection.update_one(
-            {"project_id": project_id},
-            {"$inc": {f"hardware_usage.{name}": amount}}
-        )
-
+    new_usage = current_usage + amount
+    available = max(0, cap - new_usage)
     return jsonify({
         "success": True,
         "message": f"Checked out {amount} from {name}",
-        "hardware": updated
+        "hardware": {"name": name, "capacity": cap, "available": available}
     }), 200
 
 @app.route('/hardware/checkin', methods=['POST'])
@@ -101,41 +126,48 @@ def checkin_hardware():
     name = data.get('name')
     amount = int(data.get('amount', 0))
     project_id = data.get('project_id')
+    username = data.get('username')
 
-    if not name or amount <= 0:
-        return jsonify({"success": False, "message": "Provide name and positive amount"}), 400
+    if not name or amount <= 0 or not project_id or not username:
+        return jsonify({"success": False, "message": "Provide name, positive amount, project_id, and username"}), 400
 
     hwset = hardware_collection.find_one({'name': name})
     if not hwset:
         return jsonify({'success': False, 'message': 'Hardware set not found'}), 404
 
-    if hwset['available'] + amount > hwset['capacity']:
-        return jsonify({'success': False, 'message': 'Cannot exceed hardware capacity'}), 400
+    project = projects_collection.find_one({'project_id': project_id})
+    if not project:
+        return jsonify({'success': False, 'message': 'Project not found'}), 404
 
-    hardware_collection.update_one({'name': name}, {'$inc': {'available': amount}})
-    updated = hardware_collection.find_one({'name': name}, {'_id': 0})
+    members = project.get('members') or [project.get('owner') or project.get('username')]
+    if username not in members:
+        return jsonify({'success': False, 'message': 'User is not a member of this project'}), 403
 
-    if project_id:
-        project = projects_collection.find_one({'project_id': project_id})
-        if not project:
-            return jsonify({'success': False, 'message': 'Project not found'}), 404
+    cap = int(hwset.get('capacity', 0))
+    current_usage = int((project.get('hardware_usage') or {}).get(name, 0))
+    user_current = int(((project.get('user_usage') or {}).get(username) or {}).get(name, 0))
+    if current_usage < amount:
+        return jsonify({
+            'success': False,
+            'message': f'Project has only {current_usage} units checked out from {name}'
+        }), 400
+    if user_current < amount:
+        return jsonify({
+            'success': False,
+            'message': f'User has only {user_current} units checked out from {name}'
+        }), 400
 
-        current_usage = project['hardware_usage'].get(name, 0)
-        if current_usage < amount:
-            return jsonify({
-                'success': False,
-                'message': f'Project has only {current_usage} units checked out from {name}'
-            }), 400
+    projects_collection.update_one(
+        {'project_id': project_id},
+        {'$inc': {f"hardware_usage.{name}": -amount, f"user_usage.{username}.{name}": -amount}}
+    )
 
-        projects_collection.update_one(
-            {'project_id': project_id},
-            {'$inc': {f"hardware_usage.{name}": -amount}}
-        )
-
+    new_usage = current_usage - amount
+    available = max(0, cap - new_usage)
     return jsonify({
         'success': True,
         'message': f'Checked in {amount} units to {name}',
-        'hardware': updated
+        'hardware': {"name": name, "capacity": cap, "available": available}
     }), 200
 
 @app.route('/projects', methods=['POST'])
@@ -154,7 +186,8 @@ def create_project():
     new_project = {
         "project_id": project_id,
         "project_name": project_name,
-        "username": username,
+        "owner": username,
+        "members": [username],
         "hardware_usage": {"HWSet1": 0, "HWSet2": 0}
     }
     projects_collection.insert_one(new_project)
@@ -163,8 +196,70 @@ def create_project():
 
 @app.route('/projects/<username>', methods=['GET'])
 def get_projects(username):
-    projects = list(projects_collection.find({"username": username}, {"_id": 0}))
+    cursor = projects_collection.find({
+        "$or": [
+            {"members": username},
+            {"username": username},
+        ]
+    })
+    projects = []
+    for p in cursor:
+        p.pop('_id', None)
+        if 'members' not in p:
+            owner = p.get('owner') or p.get('username') or 'unknown'
+            p['owner'] = owner
+            p['members'] = [owner]
+        if 'owner' not in p:
+            p['owner'] = p.get('username') or p.get('owner') or 'unknown'
+        projects.append(p)
     return jsonify(projects), 200
+
+
+@app.route('/projects', methods=['GET'])
+def list_all_projects():
+    cursor = projects_collection.find({})
+    projects = []
+    for p in cursor:
+        p.pop('_id', None)
+        if 'members' not in p:
+            owner = p.get('owner') or p.get('username') or 'unknown'
+            p['owner'] = owner
+            p['members'] = [owner]
+        if 'owner' not in p:
+            p['owner'] = p.get('username') or p.get('owner') or 'unknown'
+        projects.append(p)
+    return jsonify(projects), 200
+
+
+@app.route('/projects/join', methods=['POST'])
+def join_project():
+    data = request.get_json() or {}
+    username = data.get('username')
+    project_id = data.get('project_id')
+
+    if not username or not project_id:
+        return jsonify({"success": False, "message": "username and project_id required"}), 400
+
+    project = projects_collection.find_one({"project_id": project_id})
+    if not project:
+        return jsonify({"success": False, "message": "Project not found"}), 404
+
+    owner = project.get('owner') or project.get('username')
+    if 'members' not in project:
+        projects_collection.update_one({"project_id": project_id}, {
+            "$set": {"owner": owner},
+            "$setOnInsert": {"hardware_usage": {"HWSet1": 0, "HWSet2": 0}},
+        })
+        project = projects_collection.find_one({"project_id": project_id})
+        project['members'] = [owner] if owner else []
+
+    projects_collection.update_one(
+        {"project_id": project_id},
+        {"$addToSet": {"members": username}, "$set": {"owner": owner}}
+    )
+
+    updated = projects_collection.find_one({"project_id": project_id}, {"_id": 0})
+    return jsonify({"success": True, "message": f"Joined project {project_id}", "project": updated}), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
