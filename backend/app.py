@@ -281,7 +281,7 @@ import os
 load_dotenv()
 
 # Serve your Vite build from ./dist
-app = Flask(__name__, static_folder='./frontend/dist', static_url_path='/')
+app = Flask(__name__, static_folder='./frontend', static_url_path='/')
 CORS(app)
 
 # Read URI from env; don't let pymongo silently fall back to localhost.
