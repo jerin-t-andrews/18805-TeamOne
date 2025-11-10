@@ -13,7 +13,7 @@ function HardwarePanel({ selectedProjectId, username }) {
       setLoading(true);
       setMessage('');
       const qs = selectedProjectId ? `?project_id=${encodeURIComponent(selectedProjectId)}` : '';
-      const res = await fetch(`${BASE_URL}/hardware${qs}`);
+      const res = await fetch(`/hardware${qs}`);
       const data = await res.json();
       setHardware(Array.isArray(data) ? data : []);
     } catch (e) {
@@ -51,7 +51,7 @@ function HardwarePanel({ selectedProjectId, username }) {
     try {
       setLoading(true);
       setMessage('');
-      const res = await fetch(`${BASE_URL}/hardware/${kind}`, {
+      const res = await fetch(`$/hardware/${kind}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, amount: amt, project_id: selectedProjectId, username })
