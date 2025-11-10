@@ -336,8 +336,9 @@ def initialize_hardware_sets():
         )
     app.logger.info("Hardware sets initialized.")
 
-initialize_hardware_sets()
 connect_mongo()
+initialize_hardware_sets()
+
 
 
 
