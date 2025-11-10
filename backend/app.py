@@ -7,22 +7,18 @@ import os
 
 load_dotenv()
 
-# Serve your Vite build from ./dist
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "dist")
 app = Flask(__name__, static_folder=STATIC_DIR, static_url_path="/")
 CORS(app)
 
-# Read URI from env; don't let pymongo silently fall back to localhost.
 MONGO_URI = os.environ.get("MONGODB_URI") or os.environ.get("MONGO_URI")
 
-# Globals that are initialized on first use
 client = None
 db = None
 users = None
 hardware_collection = None
 projects_collection = None
 
-# --- Simple reversible cipher for this assignment ---
 CIPHER_N = 3
 CIPHER_D = 1
 
@@ -35,26 +31,18 @@ def _reverse_list(chars):
     return chars
 
 def encrypt(inputText: str, n: int = CIPHER_N, d: int = CIPHER_D) -> str:
-    """
-    Reversible 'encrypt' used for the assignment:
-      1) reverse string
-      2) rotate characters in printable range [34..126] by n (or -n if d == -1)
-    NOTE: This is NOT secure for real-world passwords. Use a password hasher instead.
-    """
     if n < 1 or d not in (1, -1):
         raise ValueError("n must be >= 1 and d must be +1 or -1")
 
-    # ensure str
     s = "" if inputText is None else str(inputText)
     chars = _reverse_list(list(s))
 
     step = n if d == 1 else -n
     for i, ch in enumerate(chars):
         code = ord(ch)
-        if 34 <= code <= 126:           # printable slice we rotate inside
+        if 34 <= code <= 126:
             temp = (code - 34 + step) % 93
             chars[i] = chr(34 + temp)
-        # else: leave char unchanged (e.g., newline)
     return "".join(chars)
 
 def decrypt(inputText: str, n: int = CIPHER_N, d: int = CIPHER_D) -> str:
@@ -73,7 +61,6 @@ def decrypt(inputText: str, n: int = CIPHER_N, d: int = CIPHER_D) -> str:
 
 
 def connect_mongo() -> bool:
-    """Establish Mongo connection once, on demand. Returns True if connected."""
     global client, db, users, hardware_collection, projects_collection
     if client is not None:
         return True
@@ -81,10 +68,8 @@ def connect_mongo() -> bool:
         app.logger.warning("No MONGODB_URI/MONGO_URI set; running without DB.")
         return False
     try:
-        # Fail fast if not reachable
         client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
         client.admin.command("ping")
-        # Pick default DB if provided in URI, else fallback
         db = client['hardware_db']
 
         users = db['users']
@@ -93,13 +78,11 @@ def connect_mongo() -> bool:
         return True
     except Exception as e:
         app.logger.error(f"Mongo connection failed: {e}")
-        # Ensure globals remain None on failure
         for name in ("client","db","users","hardware_collection","projects_collection"):
             globals()[name] = None
         return False
 
 def initialize_hardware_sets():
-    # Make sure we have a connection first
     connect_mongo()
     if hardware_collection is None:
         app.logger.warning("DB not connected; skipping hardware init.")
@@ -120,28 +103,17 @@ def db_ready() -> bool:
 connect_mongo()
 initialize_hardware_sets()
 
-
-
-
-# @app.before_first_request
-# def _warmup():
-#     if connect_mongo():
-#         initialize_hardware_sets()
-
-# ---------- Static / SPA ----------
 @app.route('/')
-def index(): #Test
+def index():
     return app.send_static_file('index.html')
 
 @app.route('/<path:path>')
 def static_proxy(path):
-    # serve static assets or fall back to index.html for SPA routes
     file_path = os.path.join(app.static_folder, path)
     if os.path.isfile(file_path):
         return send_from_directory(app.static_folder, path)
     return app.send_static_file('index.html')
 
-# ---------- Health ----------
 @app.route('/health')
 def health():
     status = "ok"
@@ -164,7 +136,6 @@ def health():
         details["mongo"] = "not_configured"
     return jsonify(status=status, details=details), 200
 
-# ---------- API ----------
 @app.route('/register', methods=['POST'])
 def register():
     if not db_ready():
@@ -179,7 +150,7 @@ def register():
     if users.find_one({'username': username}):
         return jsonify({'message': 'Username already exists', 'success': False}), 400
 
-    enc_pwd = encrypt(password)  # <- encrypt before storing
+    enc_pwd = encrypt(password)
     users.insert_one({'username': username, 'password': enc_pwd})
     return jsonify({'message': 'User created successfully', 'success': True}), 201
 
@@ -199,7 +170,6 @@ def login():
     stored = user.get('password', '')
     candidate_enc = encrypt(password)
 
-    # Accept either exact encrypted match (new) OR plain-text match (legacy rows)
     if stored == candidate_enc or stored == password:
         return jsonify({'message': 'Login successful', 'success': True}), 200
 
