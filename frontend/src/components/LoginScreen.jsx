@@ -75,7 +75,17 @@ function LoginScreen({ onLoginSuccess }) {
           {isLoading ? 'Creating...' : 'Create Account'}
         </button>
       </div>
-      {message && <div className="message">{message}</div>}
+      {message && (
+  <div
+    className="message"
+    style={{
+      color: message.toLowerCase().includes('success') ? 'green' : 'red',
+    }}
+  >
+    {message}
+  </div>
+)}
+
     </div>
   );
 }
