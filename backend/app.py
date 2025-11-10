@@ -324,8 +324,9 @@ def connect_mongo() -> bool:
         return False
 
 def initialize_hardware_sets():
-    """Seed HW sets if DB is connected; no-op if not connected."""
-    if not hardware_collection:
+    # Make sure we have a connection first
+    connect_mongo()
+    if hardware_collection is None:
         app.logger.warning("DB not connected; skipping hardware init.")
         return
     for name, cap in (("HWSet1", 100), ("HWSet2", 100)):
@@ -335,6 +336,11 @@ def initialize_hardware_sets():
             upsert=True,
         )
     app.logger.info("Hardware sets initialized.")
+
+def db_ready() -> bool:
+    connect_mongo()
+    return all(x is not None for x in (users, hardware_collection, projects_collection))
+
 
 connect_mongo()
 initialize_hardware_sets()
