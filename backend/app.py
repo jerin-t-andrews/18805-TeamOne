@@ -11,7 +11,7 @@ CORS(app)
 
 # MONGO_URI = os.getenv('MONGO_URI')
 MONGODB_URI = os.environ.get("MONGODB_URI")  
-client = MongoClient(MONGO_URI)
+client = MongoClient(MONGODB_URI)
 db = client['hardware_db']
 users = db['users']
 hardware_collection = db["hardware_sets"]
