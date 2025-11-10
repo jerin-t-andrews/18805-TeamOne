@@ -100,3 +100,63 @@ nav button {
   margin-bottom: 8px;
   color: #b45309;
 }
+
+.login-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 80vh;
+  gap: 10px;
+}
+
+.login-screen input {
+  padding: 10px;
+  width: 250px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.login-screen .buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.login-screen button {
+  padding: 8px 15px;
+  cursor: pointer;
+}
+
+.login-screen .message {
+  margin-top: 10px;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: center; 
+  background-color: #1e1e1e; 
+  color: white;
+  padding: 1rem;
+  position: relative; 
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.navbar-center {
+  text-align: center;
+  flex: 1; 
+}
+
+.navbar-right {
+  position: absolute;
+  right: 1rem; 
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+

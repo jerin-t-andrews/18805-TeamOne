@@ -1,0 +1,8 @@
+{
+  "name": "heroku-root",
+  "private": true,
+  "engines": { "node": ">=20 <23" },
+  "scripts": {
+    "heroku-postbuild": "npm ci --prefix frontend --include=dev && npm run build --prefix frontend && rm -rf backend/dist && cp -R frontend/dist backend/dist"
+  }
+}

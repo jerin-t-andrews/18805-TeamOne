@@ -1,35 +1,174 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from pymongo import MongoClient
+from pymongo.errors import ServerSelectionTimeoutError
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
 
-app = Flask(__name__)
+# Serve your Vite build from ./dist
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "dist")
+app = Flask(__name__, static_folder=STATIC_DIR, static_url_path="/")
 CORS(app)
 
-MONGO_URI = os.getenv('MONGO_URI')
-client = MongoClient(MONGO_URI)
-db = client['hardware_db']
-users = db['users']
-hardware_collection = db["hardware_sets"]
-projects_collection = db["projects"]
+# Read URI from env; don't let pymongo silently fall back to localhost.
+MONGO_URI = os.environ.get("MONGODB_URI") or os.environ.get("MONGO_URI")
+
+# Globals that are initialized on first use
+client = None
+db = None
+users = None
+hardware_collection = None
+projects_collection = None
+
+# --- Simple reversible cipher for this assignment ---
+CIPHER_N = 3
+CIPHER_D = 1
+
+def _reverse_list(chars):
+    left, right = 0, len(chars) - 1
+    while left < right:
+        chars[left], chars[right] = chars[right], chars[left]
+        left += 1
+        right -= 1
+    return chars
+
+def encrypt(inputText: str, n: int = CIPHER_N, d: int = CIPHER_D) -> str:
+    """
+    Reversible 'encrypt' used for the assignment:
+      1) reverse string
+      2) rotate characters in printable range [34..126] by n (or -n if d == -1)
+    NOTE: This is NOT secure for real-world passwords. Use a password hasher instead.
+    """
+    if n < 1 or d not in (1, -1):
+        raise ValueError("n must be >= 1 and d must be +1 or -1")
+
+    # ensure str
+    s = "" if inputText is None else str(inputText)
+    chars = _reverse_list(list(s))
+
+    step = n if d == 1 else -n
+    for i, ch in enumerate(chars):
+        code = ord(ch)
+        if 34 <= code <= 126:           # printable slice we rotate inside
+            temp = (code - 34 + step) % 93
+            chars[i] = chr(34 + temp)
+        # else: leave char unchanged (e.g., newline)
+    return "".join(chars)
+
+def decrypt(inputText: str, n: int = CIPHER_N, d: int = CIPHER_D) -> str:
+    if n < 1 or d not in (1, -1):
+        raise ValueError("n must be >= 1 and d must be +1 or -1")
+
+    s = "" if inputText is None else str(inputText)
+    chars = list(s)
+    step = -n if d == 1 else n
+    for i, ch in enumerate(chars):
+        code = ord(ch)
+        if 34 <= code <= 126:
+            temp = (code - 34 + step) % 93
+            chars[i] = chr(34 + temp)
+    return "".join(_reverse_list(chars))
+
+
+def connect_mongo() -> bool:
+    """Establish Mongo connection once, on demand. Returns True if connected."""
+    global client, db, users, hardware_collection, projects_collection
+    if client is not None:
+        return True
+    if not MONGO_URI:
+        app.logger.warning("No MONGODB_URI/MONGO_URI set; running without DB.")
+        return False
+    try:
+        # Fail fast if not reachable
+        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+        client.admin.command("ping")
+        # Pick default DB if provided in URI, else fallback
+        db = client['hardware_db']
+
+        users = db['users']
+        hardware_collection = db["hardware_sets"]
+        projects_collection = db["projects"]
+        return True
+    except Exception as e:
+        app.logger.error(f"Mongo connection failed: {e}")
+        # Ensure globals remain None on failure
+        for name in ("client","db","users","hardware_collection","projects_collection"):
+            globals()[name] = None
+        return False
 
 def initialize_hardware_sets():
+    # Make sure we have a connection first
+    connect_mongo()
+    if hardware_collection is None:
+        app.logger.warning("DB not connected; skipping hardware init.")
+        return
     for name, cap in (("HWSet1", 100), ("HWSet2", 100)):
         hardware_collection.update_one(
             {"name": name},
-            {
-                "$setOnInsert": {"capacity": cap, "available": cap}
-            },
+            {"$setOnInsert": {"capacity": cap, "available": cap}},
             upsert=True,
         )
+    app.logger.info("Hardware sets initialized.")
 
+def db_ready() -> bool:
+    connect_mongo()
+    return all(x is not None for x in (users, hardware_collection, projects_collection))
+
+
+connect_mongo()
 initialize_hardware_sets()
 
+
+
+
+# @app.before_first_request
+# def _warmup():
+#     if connect_mongo():
+#         initialize_hardware_sets()
+
+# ---------- Static / SPA ----------
+@app.route('/')
+def index(): #Test
+    return app.send_static_file('index.html')
+
+@app.route('/<path:path>')
+def static_proxy(path):
+    # serve static assets or fall back to index.html for SPA routes
+    file_path = os.path.join(app.static_folder, path)
+    if os.path.isfile(file_path):
+        return send_from_directory(app.static_folder, path)
+    return app.send_static_file('index.html')
+
+# ---------- Health ----------
+@app.route('/health')
+def health():
+    status = "ok"
+    details = {}
+    if MONGO_URI:
+        try:
+            if connect_mongo():
+                client.admin.command("ping")
+                details["mongo"] = "up"
+            else:
+                status = "degraded"
+                details["mongo"] = "not_connected"
+        except ServerSelectionTimeoutError:
+            status = "degraded"
+            details["mongo"] = "timeout"
+        except Exception as e:
+            status = "degraded"
+            details["mongo"] = f"down: {e.__class__.__name__}"
+    else:
+        details["mongo"] = "not_configured"
+    return jsonify(status=status, details=details), 200
+
+# ---------- API ----------
 @app.route('/register', methods=['POST'])
 def register():
+    if not db_ready():
+        return jsonify({'message': 'DB not available', 'success': False}), 503
     data = request.get_json() or {}
     username = data.get('username')
     password = data.get('password')
@@ -40,23 +179,38 @@ def register():
     if users.find_one({'username': username}):
         return jsonify({'message': 'Username already exists', 'success': False}), 400
 
-    users.insert_one({'username': username, 'password': password})
+    enc_pwd = encrypt(password)  # <- encrypt before storing
+    users.insert_one({'username': username, 'password': enc_pwd})
     return jsonify({'message': 'User created successfully', 'success': True}), 201
+
 
 @app.route('/login', methods=['POST'])
 def login():
-    data = request.get_json()
+    if not db_ready():
+        return jsonify({'message': 'DB not available', 'success': False}), 503
+    data = request.get_json() or {}
     username = data.get('username')
     password = data.get('password')
 
-    user = users.find_one({'username': username})
-    if username and password:
-        if user and user.get('password') == password:
-            return jsonify({'message': 'Login successful', 'success': True})
+    user = users.find_one({'username': username}) if username else None
+    if not (username and password and user):
         return jsonify({'message': 'Invalid username or password', 'success': False}), 401
-    
+
+    stored = user.get('password', '')
+    candidate_enc = encrypt(password)
+
+    # Accept either exact encrypted match (new) OR plain-text match (legacy rows)
+    if stored == candidate_enc or stored == password:
+        return jsonify({'message': 'Login successful', 'success': True}), 200
+
+    return jsonify({'message': 'Invalid username or password', 'success': False}), 401
+
+
 @app.route('/hardware', methods=['GET'])
 def get_hardware_sets():
+    if not db_ready():
+        return jsonify({'message': 'DB not available', 'success': False}), 503
+
     project_id = request.args.get('project_id')
     base_sets = list(hardware_collection.find({}, {"_id": 0}))
 
@@ -81,6 +235,9 @@ def get_hardware_sets():
 
 @app.route('/hardware/checkout', methods=['POST'])
 def checkout_hardware():
+    if not db_ready():
+        return jsonify({'message': 'DB not available', 'success': False}), 503  
+
     data = request.get_json() or {}
     name = data.get('name')
     amount = int(data.get('amount', 0))
@@ -122,6 +279,9 @@ def checkout_hardware():
 
 @app.route('/hardware/checkin', methods=['POST'])
 def checkin_hardware():
+    if not db_ready():
+        return jsonify({'message': 'DB not available', 'success': False}), 503
+
     data = request.get_json() or {}
     name = data.get('name')
     amount = int(data.get('amount', 0))
@@ -172,6 +332,9 @@ def checkin_hardware():
 
 @app.route('/projects', methods=['POST'])
 def create_project():
+    if not db_ready():
+        return jsonify({'message': 'DB not available', 'success': False}), 503
+
     data = request.get_json() or {}
     username = data.get('username')
     project_id = data.get('project_id')
@@ -193,9 +356,11 @@ def create_project():
     projects_collection.insert_one(new_project)
     return jsonify({"success": True, "message": f"Project '{project_name}' created successfully."}), 201
 
-
 @app.route('/projects/<username>', methods=['GET'])
 def get_projects(username):
+    if not db_ready():
+        return jsonify({'message': 'DB not available', 'success': False}), 503
+
     cursor = projects_collection.find({
         "$or": [
             {"members": username},
@@ -214,9 +379,11 @@ def get_projects(username):
         projects.append(p)
     return jsonify(projects), 200
 
-
 @app.route('/projects', methods=['GET'])
 def list_all_projects():
+    if not db_ready():
+        return jsonify({'message': 'DB not available', 'success': False}), 503
+
     cursor = projects_collection.find({})
     projects = []
     for p in cursor:
@@ -230,9 +397,11 @@ def list_all_projects():
         projects.append(p)
     return jsonify(projects), 200
 
-
 @app.route('/projects/join', methods=['POST'])
 def join_project():
+    if not db_ready():
+        return jsonify({'message': 'DB not available', 'success': False}), 503
+
     data = request.get_json() or {}
     username = data.get('username')
     project_id = data.get('project_id')
@@ -261,5 +430,5 @@ def join_project():
     updated = projects_collection.find_one({"project_id": project_id}, {"_id": 0})
     return jsonify({"success": True, "message": f"Joined project {project_id}", "project": updated}), 200
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', debug=False, port=int(os.environ.get('PORT', 8080)))

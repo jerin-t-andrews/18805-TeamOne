@@ -15,7 +15,7 @@ function ProjectsPanel({ username, selectedProjectId, onSelectProject }) {
     try {
       setLoading(true);
       setMessage('');
-      const res = await fetch(`${BASE_URL}/projects/${encodeURIComponent(username)}`);
+      const res = await fetch(`/projects/${encodeURIComponent(username)}`);
       const data = await res.json();
       setProjects(Array.isArray(data) ? data : []);
     } catch (e) {
@@ -33,7 +33,7 @@ function ProjectsPanel({ username, selectedProjectId, onSelectProject }) {
 
   const fetchAll = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/projects`);
+      const res = await fetch(`/projects`);
       const data = await res.json();
       setAllProjects(Array.isArray(data) ? data : []);
     } catch (e) {
@@ -63,7 +63,7 @@ function ProjectsPanel({ username, selectedProjectId, onSelectProject }) {
     try {
       setLoading(true);
       setMessage('');
-      const res = await fetch(`${BASE_URL}/projects`, {
+      const res = await fetch(`/projects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, project_id: pid, project_name: pname })
@@ -95,7 +95,7 @@ function ProjectsPanel({ username, selectedProjectId, onSelectProject }) {
     try {
       setLoading(true);
       setMessage('');
-      const res = await fetch(`${BASE_URL}/projects/join`, {
+      const res = await fetch(`/projects/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, project_id: pid })
