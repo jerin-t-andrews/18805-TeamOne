@@ -4,9 +4,9 @@ const BASE_URL = 'http://127.0.0.1:5000';
 
 function ProjectsPanel({ username, selectedProjectId, onSelectProject }) {
   const [projects, setProjects] = useState([]);
-  const [allProjects, setAllProjects] = useState([]);
   const [projectName, setProjectName] = useState('');
   const [projectId, setProjectId] = useState('');
+  const [joinProjectId, setJoinProjectId] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -28,30 +28,7 @@ function ProjectsPanel({ username, selectedProjectId, onSelectProject }) {
 
   useEffect(() => {
     fetchProjects();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username]);
-
-  const fetchAll = async () => {
-    try {
-      const res = await fetch(`/projects`);
-      const data = await res.json();
-      setAllProjects(Array.isArray(data) ? data : []);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  useEffect(() => {
-    fetchAll();
-  }, []);
-
-  const isMember = (p) => {
-    if (!username) return false;
-    if (Array.isArray(p.members) && p.members.includes(username)) return true;
-    if (p.owner === username) return true;
-    if (p.username === username) return true; // legacy
-    return false;
-  };
 
   const createProject = async () => {
     const pid = projectId.trim();
@@ -92,20 +69,25 @@ function ProjectsPanel({ username, selectedProjectId, onSelectProject }) {
       setMessage('Login to join projects');
       return;
     }
+    const trimmed = (pid || '').trim();
+    if (!trimmed) {
+      setMessage('Enter a project ID to join');
+      return;
+    }
     try {
       setLoading(true);
       setMessage('');
       const res = await fetch(`/projects/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, project_id: pid })
+        body: JSON.stringify({ username, project_id: trimmed })
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setMessage(`Joined ${pid}`);
+        setMessage(`Joined ${trimmed}`);
         await fetchProjects();
-        await fetchAll();
-        onSelectProject?.(pid);
+        onSelectProject?.(trimmed);
+        setJoinProjectId('');
       } else {
         setMessage(data.message || 'Failed to join project');
       }
@@ -155,30 +137,16 @@ function ProjectsPanel({ username, selectedProjectId, onSelectProject }) {
           ))
         )}
       </div>
-      <h4 style={{ marginTop: 16 }}>All Projects</h4>
-      <div className="project-list">
-        {allProjects.length === 0 ? (
-          <div>No projects found</div>
-        ) : (
-          allProjects.map((p) => (
-            <div key={p.project_id} className="project-item" style={{ justifyContent: 'space-between' }}>
-              <span>
-                {p.project_name} ({p.project_id}) — owner: {p.owner || p.username}
-              </span>
-              <span>
-                {isMember(p) ? (
-                  <>
-                    <button onClick={() => onSelectProject?.(p.project_id)} disabled={selectedProjectId === p.project_id}>
-                      {selectedProjectId === p.project_id ? 'Selected' : 'Select'}
-                    </button>
-                  </>
-                ) : (
-                  <button onClick={() => joinProject(p.project_id)} disabled={loading}>Join</button>
-                )}
-              </span>
-            </div>
-          ))
-        )}
+      <h4 style={{ marginTop: 16 }}>Join a Project</h4>
+      <div className="project-create">
+        <input
+          placeholder="Enter Project ID to join"
+          value={joinProjectId}
+          onChange={(e) => setJoinProjectId(e.target.value)}
+        />
+        <button onClick={() => joinProject(joinProjectId)} disabled={loading || !username}>
+          {loading ? 'Working...' : 'Join Project'}
+        </button>
       </div>
       {message && <div className="message">{message}</div>}
     </section>
