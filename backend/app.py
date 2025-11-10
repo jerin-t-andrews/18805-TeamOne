@@ -9,7 +9,8 @@ load_dotenv()
 app = Flask(__name__, static_folder='./dist', static_url_path='/')
 CORS(app)
 
-MONGO_URI = os.getenv('MONGO_URI')
+# MONGO_URI = os.getenv('MONGO_URI')
+MONGODB_URI = os.environ.get("MONGODB_URI")  
 client = MongoClient(MONGO_URI)
 db = client['hardware_db']
 users = db['users']
