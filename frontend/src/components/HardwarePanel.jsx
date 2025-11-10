@@ -51,7 +51,7 @@ function HardwarePanel({ selectedProjectId, username }) {
     try {
       setLoading(true);
       setMessage('');
-      const res = await fetch(`$/hardware/${kind}`, {
+      const res = await fetch(`/hardware/${kind}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, amount: amt, project_id: selectedProjectId, username })
