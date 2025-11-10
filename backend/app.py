@@ -294,6 +294,10 @@ users = None
 hardware_collection = None
 projects_collection = None
 
+@app.before_serving
+def _startup():
+    initialize_hardware_sets()
+
 def connect_mongo() -> bool:
     """Establish Mongo connection once, on demand. Returns True if connected."""
     global client, db, users, hardware_collection, projects_collection
