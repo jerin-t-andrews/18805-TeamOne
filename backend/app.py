@@ -392,7 +392,7 @@ def health():
 # ---------- API ----------
 @app.route('/register', methods=['POST'])
 def register():
-    if not connect_mongo() or not users:
+    if not db_ready():
         return jsonify({'message': 'DB not available', 'success': False}), 503
     data = request.get_json() or {}
     username = data.get('username')
@@ -409,7 +409,7 @@ def register():
 
 @app.route('/login', methods=['POST'])
 def login():
-    if not connect_mongo() or not users:
+    if not db_ready():
         return jsonify({'message': 'DB not available', 'success': False}), 503
     data = request.get_json() or {}
     username = data.get('username')
@@ -422,8 +422,8 @@ def login():
 
 @app.route('/hardware', methods=['GET'])
 def get_hardware_sets():
-    if not connect_mongo() or not hardware_collection or not projects_collection:
-        return jsonify({"message": "DB not available"}), 503
+    if not db_ready():
+        return jsonify({'message': 'DB not available', 'success': False}), 503
 
     project_id = request.args.get('project_id')
     base_sets = list(hardware_collection.find({}, {"_id": 0}))
@@ -449,8 +449,8 @@ def get_hardware_sets():
 
 @app.route('/hardware/checkout', methods=['POST'])
 def checkout_hardware():
-    if not connect_mongo() or not (hardware_collection and projects_collection):
-        return jsonify({"success": False, "message": "DB not available"}), 503
+    if not db_ready():
+        return jsonify({'message': 'DB not available', 'success': False}), 503  
 
     data = request.get_json() or {}
     name = data.get('name')
@@ -493,8 +493,8 @@ def checkout_hardware():
 
 @app.route('/hardware/checkin', methods=['POST'])
 def checkin_hardware():
-    if not connect_mongo() or not (hardware_collection and projects_collection):
-        return jsonify({"success": False, "message": "DB not available"}), 503
+    if not db_ready():
+        return jsonify({'message': 'DB not available', 'success': False}), 503
 
     data = request.get_json() or {}
     name = data.get('name')
@@ -546,8 +546,8 @@ def checkin_hardware():
 
 @app.route('/projects', methods=['POST'])
 def create_project():
-    if not connect_mongo() or not projects_collection:
-        return jsonify({"success": False, "message": "DB not available"}), 503
+    if not db_ready():
+        return jsonify({'message': 'DB not available', 'success': False}), 503
 
     data = request.get_json() or {}
     username = data.get('username')
@@ -572,8 +572,8 @@ def create_project():
 
 @app.route('/projects/<username>', methods=['GET'])
 def get_projects(username):
-    if not connect_mongo() or not projects_collection:
-        return jsonify({"message": "DB not available"}), 503
+    if not db_ready():
+        return jsonify({'message': 'DB not available', 'success': False}), 503
 
     cursor = projects_collection.find({
         "$or": [
@@ -595,8 +595,8 @@ def get_projects(username):
 
 @app.route('/projects', methods=['GET'])
 def list_all_projects():
-    if not connect_mongo() or not projects_collection:
-        return jsonify({"message": "DB not available"}), 503
+    if not db_ready():
+        return jsonify({'message': 'DB not available', 'success': False}), 503
 
     cursor = projects_collection.find({})
     projects = []
@@ -613,8 +613,8 @@ def list_all_projects():
 
 @app.route('/projects/join', methods=['POST'])
 def join_project():
-    if not connect_mongo() or not projects_collection:
-        return jsonify({"success": False, "message": "DB not available"}), 503
+    if not db_ready():
+        return jsonify({'message': 'DB not available', 'success': False}), 503
 
     data = request.get_json() or {}
     username = data.get('username')
