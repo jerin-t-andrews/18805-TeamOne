@@ -310,8 +310,7 @@ def connect_mongo() -> bool:
         client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
         client.admin.command("ping")
         # Pick default DB if provided in URI, else fallback
-        db_ = client.get_default_database()
-        db = db_ if db_ is not None else client["hardware_db"]
+        db = client['hardware_db']
 
         users = db['users']
         hardware_collection = db["hardware_sets"]
