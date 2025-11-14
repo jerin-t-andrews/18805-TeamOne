@@ -51,7 +51,7 @@ function ProjectsPanel({ username, selectedProjectId, onSelectProject }) {
         setProjectId('');
         setProjectName('');
         await fetchProjects();
-        await fetchAll();
+        // await fetchAll();
         onSelectProject?.(pid);
       } else {
         setMessage(data.message || 'Failed to create project');
