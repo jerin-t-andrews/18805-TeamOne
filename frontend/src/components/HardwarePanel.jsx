@@ -65,7 +65,7 @@ function HardwarePanel({ selectedProjectId, username }) {
       }
     } catch (e) {
       console.error(e);
-      setMessage('Error connecting to server');
+      // setMessage('Error connecting to server');
     } finally {
       setLoading(false);
     }
