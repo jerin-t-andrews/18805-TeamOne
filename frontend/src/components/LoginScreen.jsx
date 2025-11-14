@@ -24,7 +24,7 @@ function LoginScreen({ onLoginSuccess }) {
       if (data.success) onLoginSuccess(localUsername);
       setMessage(data.message);
     } catch {
-      setMessage('Error connecting to server');
+      // setMessage('Error connecting to server');
     } finally {
       setIsLoading(false);
     }
@@ -45,7 +45,7 @@ function LoginScreen({ onLoginSuccess }) {
       const data = await response.json();
       setMessage(data.message);
     } catch {
-      setMessage('Error connecting to server');
+      // setMessage('Error connecting to server');
     } finally {
       setIsLoading(false);
     }
